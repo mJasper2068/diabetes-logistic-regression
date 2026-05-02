@@ -142,7 +142,6 @@ Patients above the `0.10` threshold are flagged for further review.
 
 ```text
 README.md
-requirements.txt
 diabetes_logistic_regression.ipynb
 ```
 
