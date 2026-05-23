@@ -2,152 +2,104 @@
 
 ## Overview
 
-This project builds a diabetes prediction model using the Kaggle Pima Indians Diabetes Database.
-The goal is to predict whether a patient is likely to have diabetes based on diagnostic health measurements.
+This project builds a diabetes prediction model using the Pima Indians Diabetes Database from Kaggle.
 
-Because this is a healthcare-related classification problem, missing a diabetic patient is more critical than sending extra patients for manual review.
-For that reason, recall and false negatives are treated as more important than raw accuracy.
-
----
-
-## Objective
-
-Predict whether a patient is:
-
-- Non-diabetic (0)
-- Diabetic (1)
-
-And adjust the decision threshold to reduce missed diabetic cases.
+The goal is to predict whether a patient is likely to have diabetes based on diagnostic health measurements. Because this is a healthcare-related classification problem, missing a diabetic patient is more critical than flagging extra patients for manual review. Recall and false negatives are treated as more important than raw accuracy.
 
 ---
 
 ## Dataset
 
-The dataset used is the Pima Indians Diabetes Database from Kaggle.
+Pima Indians Diabetes Database from Kaggle.
 
-Target column:
+```
+https://www.kaggle.com/datasets/uciml/pima-indians-diabetes-database
+```
 
-- `Outcome`
+The dataset contains 768 patient records. Target column: `Outcome` (1 = Diabetic, 0 = Non-diabetic).
 
-Features include:
-
-- Pregnancies
-- Glucose
-- BloodPressure
-- SkinThickness
-- Insulin
-- BMI
-- DiabetesPedigreeFunction
-- Age
+**Features:** Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, Age
 
 ---
 
 ## Approach
 
-- Loaded the diabetes dataset
-- Separated features `X` and target `y`
+This project was built without a sklearn Pipeline to demonstrate manual preprocessing steps. Later projects in this portfolio use Pipeline for production-ready structure.
+
+- Loaded and inspected the dataset using `df.describe()`, `df.info()`, and `df.head()`
 - Checked for missing values
-- Split the data into train/test sets
-- Trained a Logistic Regression model
-- Tuned the regularization strength using multiple `C` values
-- Evaluated using accuracy and confusion matrix
-- Applied threshold tuning to reduce false negatives
+- Split the data into train/test sets with `stratify=y`
+- Tuned regularization strength using multiple C values
+- Applied `class_weight='balanced'` to handle class imbalance
+- Applied threshold tuning to minimize false negatives
 
 ---
 
 ## Model
 
-Logistic Regression was used as the baseline classification model.
+Logistic Regression with `class_weight='balanced'` to account for the imbalanced target distribution (500 non-diabetic vs 268 diabetic).
 
-The following `C` values were tested:
+**C Tuning Results:**
 
-- 0.01
-- 0.1
-- 1
-- 10
-- 100
-- 1000
+| C | Train Score | Test Score |
+|---|---|---|
+| 0.01 | 0.792 | 0.729 |
+| 0.1 | 0.792 | 0.734 |
+| 1 | 0.792 | 0.729 |
+| 10 | 0.793 | 0.729 |
+| 100 | 0.793 | 0.729 |
 
-Test performance reached `0.729` at:
+**Selected: C = 0.1**
 
-- C = 10
-- C = 100
-- C = 1000
-
-`C = 10` was selected because it achieved the same test performance as higher values while keeping stronger regularization than `C = 100` or `C = 1000`.
-This helps reduce unnecessary model flexibility and lowers overfitting risk.
+C=0.1 achieved the earliest best test score of 0.734. When scores are tied, the lower C is preferred as it applies stronger regularization and reduces overfitting risk.
 
 ---
 
-## Threshold Tuning (Key Insight)
+## Threshold Tuning
 
-The default Logistic Regression threshold is `0.50`, but this may not be the best decision rule for a healthcare-related problem.
+The default threshold of 0.50 was lowered to minimize false negatives. Accuracy was not used as the primary evaluation metric as it decreases when the threshold is lowered, which does not reflect the true goal of minimizing missed diabetic cases.
 
-A lower threshold was selected:
+| Threshold | FN | FP |
+|---|---|---|
+| 0.50 (base) | 20 | 29 |
+| 0.40 | 10 | 40 |
+| 0.30 | 5 | 53 |
+| 0.20 | 1 | 75 |
+| 0.10 (final) | 0 | 104 |
 
-```text
-Threshold = 0.10
-```
+**Final threshold: 0.10**
 
-At this threshold, the model produced:
-
-```text
-False Negatives = 2
-False Positives = 83
-```
-
-This tradeoff is acceptable because missing a patient who may have diabetes is more serious than flagging extra patients for manual review.
+At 0.10, FN was reduced from 20 to 0. The increase in FP from 29 to 104 is acceptable because missing a diabetic patient carries a higher cost than routing additional patients for manual review by healthcare staff.
 
 ---
 
-## Business / Healthcare Application
+## Healthcare Application
 
-This model can be used as a screening support tool.
-
-Example use case:
+This model functions as a screening support tool, not a final diagnosis.
 
 - Predict diabetes probability for each patient
-- Flag patients above the selected threshold
-- Send flagged patients for further review or testing
-
-The model is not used as a final medical diagnosis. Instead, it supports prioritization and early detection.
+- Flag patients above the 0.10 threshold for further review
+- Route flagged patients to clinical testing
 
 ---
 
-## Decision Rule
+## Limitations
 
-Instead of only predicting diabetes using the default threshold, the model is used to guide action:
-
-> Patients with predicted diabetes probability >= 0.10 should be flagged for further review.
-
-This converts the model output into a practical screening strategy.
+- Small dataset (768 records) may limit generalizability
+- Zero values in Glucose, BloodPressure, Insulin, and BMI likely represent missing data rather than true zero readings, not addressed in this version
+- Model is not suitable as a standalone diagnostic tool
 
 ---
 
-## Sample Output
+## Future Improvements
 
-Example model decision format:
-
-| Patient ID | Diabetes Probability | Decision |
-|---|---:|---|
-| 001 | 0.76 | Review |
-| 002 | 0.34 | Review |
-| 003 | 0.04 | No Review |
-
-Patients above the `0.10` threshold are flagged for further review.
+- Replace zero values with imputed estimates using median or domain-informed values
+- Add sklearn Pipeline for cleaner preprocessing structure
+- Test additional models (Random Forest, XGBoost) for comparison
 
 ---
 
-## Files
-
-```text
-README.md
-diabetes_logistic_regression.ipynb
-```
-
----
-
-## Tools Used
+## Technologies Used
 
 - Python
 - Pandas
@@ -157,8 +109,10 @@ diabetes_logistic_regression.ipynb
 
 ---
 
-## Key Learning
+## Repository Structure
 
-The main learning from this project is that model accuracy alone is not enough.
-
-For healthcare-related classification, the cost of a false negative is higher than the cost of a false positive. Threshold tuning allows the model to better match the real-world decision problem.
+```
+├── diabetes_logistic_regression.ipynb
+├── README.md
+└── diabetes.csv
+```
